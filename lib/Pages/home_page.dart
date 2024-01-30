@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:task_app/Models/task_model.dart';
+import 'package:task_app/Pages/task_page.dart';
 import 'package:task_app/Utils/Widgets.dart';
 
 class HomePage extends StatefulWidget {
@@ -50,6 +50,7 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     tabController = TabController(vsync: this, length: 3);
+    refreshTasks();
   }
 
   @override
@@ -58,10 +59,72 @@ class _HomePageState extends State<HomePage>
     tabController.dispose();
   }
 
-  final data = TaskData();
   final TaskBox = Hive.box('Task_box');
 
+  List<Map<String, dynamic>> tasks = [];
+  List<Map<String, dynamic>> tasksToday = [];
+  List<Map<String, dynamic>> tasksTomorrow = [];
+  List<Map<String, dynamic>> tasksUpcoming = [];
+
+  void refreshTasks() {
+    tasks = [];
+    tasksToday = [];
+    tasksTomorrow = [];
+    tasksUpcoming = [];
+    final now = DateTime.now();
+
+    final taskslist = TaskBox.keys.map((key) {
+      final item = TaskBox.get(key);
+      final deadline = item['deadline'];
+      if (deadline != null && deadline is DateTime) {
+        if (isSameDay(deadline, now)) {
+          tasksToday.add({
+            "key": key,
+            "title": item['title'],
+            "description": item['description'],
+            "deadline": item['deadline'],
+            "isCompleted": item['isCompleted'],
+          });
+        } else if (isSameDay(deadline, now.add(Duration(days: 1)))) {
+          tasksTomorrow.add({
+            "key": key,
+            "title": item['title'],
+            "description": item['description'],
+            "deadline": item['deadline'],
+            "isCompleted": item['isCompleted'],
+          });
+        } else if (deadline.isAfter(now.add(Duration(days: 1)))) {
+          tasksUpcoming.add({
+            "key": key,
+            "title": item['title'],
+            "description": item['description'],
+            "deadline": item['deadline'],
+            "isCompleted": item['isCompleted'],
+          });
+        }
+      }
+      return {
+        "key": key,
+        "title": item['title'],
+        "description": item['description'],
+        "deadline": item['deadline'],
+        "isCompleted": item['isCompleted'],
+      };
+    }).toList();
+
+    setState(() {
+      tasks = taskslist.reversed.toList();
+    });
+  }
+
+  bool isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
   void showForm(BuildContext ctx, int? itemKey) async {
+    Map<String, dynamic> data = {};
     showModalBottomSheet(
         context: ctx,
         elevation: 5,
@@ -80,21 +143,21 @@ class _HomePageState extends State<HomePage>
                         inputLabel: "Title",
                         placeHolder: "Insert the title",
                         update: (value) {
-                          data.title = value;
+                          data["title"] = value;
                         }),
                     const SizedBox(height: 5),
                     InputBox(
                         inputLabel: "Description",
                         placeHolder: "Insert the description",
                         update: (value) {
-                          data.title = value;
+                          data["description"] = value;
                         }),
                     const SizedBox(height: 5),
                     DatePicker(
                       inputLabel: "Deadline",
                       placeHolder: 'Select a Deadline',
                       update: (value) {
-                        data.deadline = value;
+                        data["deadline"] = value;
                       },
                     ),
                     const SizedBox(height: 5),
@@ -103,6 +166,7 @@ class _HomePageState extends State<HomePage>
                       onPressed: () async {
                         await TaskBox.add(data);
                         print(data);
+                        refreshTasks();
                         Navigator.of(context).pop();
                       },
                     ),
@@ -132,7 +196,11 @@ class _HomePageState extends State<HomePage>
         ),
         body: TabBarView(
           controller: tabController,
-          children: const [Scaffold(), Scaffold(), Scaffold()],
+          children: [
+            TasksPage(taskList: tasksToday),
+            TasksPage(taskList: tasksTomorrow),
+            TasksPage(taskList: tasksUpcoming),
+          ],
         ),
         bottomNavigationBar: DecoratedBox(
           decoration: const BoxDecoration(

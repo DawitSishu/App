@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:task_app/Models/task_model.dart';
 import 'package:intl/intl.dart';
 
 class InputBox extends StatefulWidget {
@@ -247,7 +246,7 @@ class _CustomButtonState extends State<CustomButton> {
 }
 
 class TaskWidget extends StatelessWidget {
-  final TaskData taskData;
+  Map<String, dynamic> taskData;
 
   TaskWidget({required this.taskData});
 
@@ -265,7 +264,7 @@ class TaskWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              taskData.title,
+              taskData["title"],
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -273,7 +272,7 @@ class TaskWidget extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              taskData.description,
+              taskData["description"],
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -290,7 +289,7 @@ class TaskWidget extends StatelessWidget {
                 ),
                 SizedBox(width: 5),
                 Text(
-                  _formatDeadline(taskData.deadline),
+                  _formatDeadline(taskData["deadline"]),
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.blue,
