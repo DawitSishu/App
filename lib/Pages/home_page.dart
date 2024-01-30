@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:task_app/Pages/task_page.dart';
 import 'package:task_app/Utils/Widgets.dart';
 
@@ -123,8 +124,25 @@ class _HomePageState extends State<HomePage>
         date1.day == date2.day;
   }
 
-  void showForm(BuildContext ctx, int? itemKey) async {
+  void showForm(
+    BuildContext ctx,
+    itemKey,
+  ) async {
     Map<String, dynamic> data = {};
+    if (itemKey != null) {
+      var rawItem = TaskBox.get(itemKey);
+      data = {
+        "key": itemKey,
+        "title": rawItem['title'],
+        "description": rawItem['description'],
+        "deadline": rawItem['deadline'],
+        "isCompleted": rawItem['isCompleted'],
+      };
+    }
+
+    final Dateformat = DateFormat('yyyy-MM-dd');
+    data['deadline'] =
+        data['deadline'] != null ? Dateformat.format(data['deadline']) : null;
     showModalBottomSheet(
         context: ctx,
         elevation: 5,
@@ -142,6 +160,7 @@ class _HomePageState extends State<HomePage>
                     InputBox(
                         inputLabel: "Title",
                         placeHolder: "Insert the title",
+                        initialValue: data["title"],
                         update: (value) {
                           data["title"] = value;
                         }),
@@ -149,6 +168,7 @@ class _HomePageState extends State<HomePage>
                     InputBox(
                         inputLabel: "Description",
                         placeHolder: "Insert the description",
+                        initialValue: data["description"],
                         update: (value) {
                           data["description"] = value;
                         }),
@@ -156,15 +176,18 @@ class _HomePageState extends State<HomePage>
                     DatePicker(
                       inputLabel: "Deadline",
                       placeHolder: 'Select a Deadline',
+                      initialValue: data["deadline"],
                       update: (value) {
                         data["deadline"] = value;
                       },
                     ),
                     const SizedBox(height: 5),
                     CustomButton(
-                      label: "Create",
+                      label: itemKey != null ? "Update" : "Create",
                       onPressed: () async {
-                        await TaskBox.add(data);
+                        itemKey != null
+                            ? await TaskBox.put(data['key'], data)
+                            : await TaskBox.add(data);
                         print(data);
                         refreshTasks();
                         Navigator.of(context).pop();
@@ -172,6 +195,17 @@ class _HomePageState extends State<HomePage>
                     ),
                   ]),
             ));
+  }
+
+  void deleteTask(Map<String, dynamic> taskData) async {
+    await TaskBox.delete(taskData['key']);
+
+    refreshTasks();
+  }
+
+  void edit() {
+    refreshTasks();
+    setState(() {});
   }
 
   @override
@@ -197,9 +231,21 @@ class _HomePageState extends State<HomePage>
         body: TabBarView(
           controller: tabController,
           children: [
-            TasksPage(taskList: tasksToday),
-            TasksPage(taskList: tasksTomorrow),
-            TasksPage(taskList: tasksUpcoming),
+            TasksPage(
+              taskList: tasksToday,
+              onDelete: deleteTask,
+              onEdit: refreshTasks,
+            ),
+            TasksPage(
+              taskList: tasksTomorrow,
+              onDelete: deleteTask,
+              onEdit: refreshTasks,
+            ),
+            TasksPage(
+              taskList: tasksUpcoming,
+              onDelete: deleteTask,
+              onEdit: refreshTasks,
+            ),
           ],
         ),
         bottomNavigationBar: DecoratedBox(

@@ -9,14 +9,14 @@ class InputBox extends StatefulWidget {
     this.placeHolder,
     this.textArea = false,
     this.update,
-    this.customController,
+    this.initialValue,
   }) : super(key: key);
 
   final inputLabel;
   final placeHolder;
   final textArea;
-  final customController;
   final update;
+  final String? initialValue;
 
   @override
   _InputBoxState createState() => _InputBoxState();
@@ -31,6 +31,7 @@ class _InputBoxState extends State<InputBox> {
   void initState() {
     super.initState();
     focusNode.addListener(_handleFocusChange);
+    controller.text = widget.initialValue ?? '';
   }
 
   @override
@@ -115,15 +116,13 @@ class _DatePicker extends State<DatePicker> {
 
   @override
   void initState() {
-    dateInput.text =
-        widget.initialValue ?? ''; //set the initial value of text field
+    dateInput.text = widget.initialValue ?? '';
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) => TextField(
         controller: dateInput,
-        //editing controller of this TextField
         decoration: InputDecoration(
           enabledBorder: const OutlineInputBorder(
             borderSide: BorderSide(color: Color.fromARGB(50, 0, 0, 0)),
@@ -246,9 +245,15 @@ class _CustomButtonState extends State<CustomButton> {
 }
 
 class TaskWidget extends StatelessWidget {
-  Map<String, dynamic> taskData;
+  final Map<String, dynamic> taskData;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  TaskWidget({required this.taskData});
+  TaskWidget({
+    required this.taskData,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -257,43 +262,66 @@ class TaskWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
       ),
-      margin: EdgeInsets.all(10),
+      margin: const EdgeInsets.all(10),
       child: Padding(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               taskData["title"],
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               taskData["description"],
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Colors.grey,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Colors.blue,
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _formatDeadline(taskData["deadline"]),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 5),
-                Text(
-                  _formatDeadline(taskData["deadline"]),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.blue,
-                  ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: onEdit,
+                      icon: const Icon(
+                        Icons.edit,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -303,7 +331,10 @@ class TaskWidget extends StatelessWidget {
     );
   }
 
-  String _formatDeadline(DateTime deadline) {
+  String _formatDeadline(DateTime? deadline) {
+    if (deadline == null) {
+      return 'No Deadline';
+    }
     // Customize the date format as needed
     return '${deadline.day}/${deadline.month}/${deadline.year}';
   }
