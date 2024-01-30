@@ -14,15 +14,17 @@ void main() async {
     systemNavigationBarColor: Colors.white,
   ));
 
-  runApp(MaterialApp(
-    title: 'Task Manager',
-    theme: ThemeData(
-      fontFamily: 'Poppins',
-    ),
-    initialRoute: '/',
-    debugShowCheckedModeBanner: false,
-    routes: {
-      '/': (context) => const HomePage(),
-    },
-  ));
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
+    );
+  }
 }
