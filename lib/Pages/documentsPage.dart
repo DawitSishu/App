@@ -1,0 +1,231 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:health_app/util/components.dart';
+import 'package:health_app/util/my_flutter_app_icons.dart';
+import 'package:health_app/Services/general-controller.dart';
+
+import 'paymentPage.dart';
+
+class Documents extends StatefulWidget {
+  const Documents({super.key});
+
+  @override
+  State<Documents> createState() => _DocumentsState();
+}
+
+class _DocumentsState extends State<Documents> {
+  String fileName = '';
+  PlatformFile? file;
+  UploadTask? task;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          leadingWidth: 30,
+          title: const Text(
+            'CV & Other Documents',
+            style: TextStyle(
+              fontSize: 20,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+        ),
+        body: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(15, 50, 15, 15),
+          children: [
+            const Text(
+              'Upload Documents',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.start,
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
+              child: Text(
+                'Upload your CV, Health license certificate, Educational certificate and Any additional health related documents.',
+                style: TextStyle(
+                  fontWeight: FontWeight.w300,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.start,
+              ),
+            ),
+            InkWell(
+              // borderRadius: BorderRadius.circular(5),
+              onTap: () async {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['pdf', 'zip'],
+                );
+                if (result != null) {
+                  file = result.files.first;
+                  int maxSizeInBytes = 5 * 1024 * 1024;
+                  if (file!.size! <= maxSizeInBytes) {
+                    setState(() {
+                      fileName = file!.name;
+                    });
+                  } else {
+                    showSnackbar(context,
+                        text: "File size exceeds the limit of 5 MB");
+                    setState(() {
+                      fileName = '';
+                    });
+                  }
+                } else {
+                  setState(() {
+                    fileName = '';
+                  });
+                  return;
+                }
+              },
+              child: Container(
+                // color: Colors.grey,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                  ),
+                  color: Colors.grey.shade100,
+                ),
+                height: 190,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Image.asset('assets/images/ImportPdf.png'),
+
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(MyFlutterApp.file_pdf),
+                      color: const Color.fromARGB(255, 36, 107, 253),
+                      iconSize: 50,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        fileName.isEmpty ? 'Browse File' : fileName,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 30),
+            // buildProgress()
+            // i skipped the space in future add midereg nger kale we'll add it here
+          ],
+        ),
+        bottomNavigationBar: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 5, bottom: 20),
+              child: CustomButton(
+                onPressed: () async {
+                  try {
+                    final path = 'files/professional/${file!.name}';
+                    final doc = File(file!.path!);
+                    final ref = FirebaseStorage.instance.ref().child(path);
+                    setState(() {
+                      task = ref.putFile(doc);
+                    });
+
+                    final snapshot = await task!.whenComplete(() {});
+
+                    final urlDownload = await snapshot.ref.getDownloadURL();
+
+                    final response = await UploadProDocs({
+                      "documentTitle": "${file!.name}",
+                      "documentPath": urlDownload
+                    });
+
+                    final creationStatus =
+                        await updateProfileStatus("completed");
+
+                    if (response != null && creationStatus != null) {
+                      successSnackbar(context,
+                          text: response['message'] ??
+                              "Your Document has Been uploaded Successfully!!");
+                    } else {
+                      showSnackbar(context,
+                          text: "ERROR Uploading: Please Try Again");
+                      return;
+                    }
+
+                    setState(() {
+                      task = null;
+                    });
+
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PaymentPage(type: 'professional'),
+                      ),
+                    );
+                  } catch (e) {
+                    // TODO
+                    showSnackbar(context,
+                        text: "ERROR Uploading: Please Try Again");
+                    return;
+                  }
+
+                  // final result = await completeRegistration();
+                  // if (result['success']) {
+                  //   Navigator.push(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //       builder: (context) => PaymentPage(type: 'professional'),
+                  //     ),
+                  //   );
+                  // } else {
+                  //   final error = result['error']
+                  //       .toString()
+                  //       .replaceAll(RegExp(r'\[.*\]'), '');
+                  //   showSnackbar(context, text: error);
+                  // }
+                },
+                label: 'Finish',
+              ),
+            ),
+          ],
+        ),
+      );
+  Widget buildProgress() => StreamBuilder<TaskSnapshot>(
+        stream: task?.snapshotEvents,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            final data = snapshot.data!;
+            double progress = data.bytesTransferred / data.totalBytes;
+            return SizedBox(
+              height: 50,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey,
+                      color: Colors.green),
+                  Center(
+                    child: Text("${(100 * progress).roundToDouble()}%",
+                        style: TextStyle(color: Colors.white)),
+                  )
+                ],
+              ),
+            );
+          } else {
+            return const SizedBox();
+          }
+        },
+      );
+}
